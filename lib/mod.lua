@@ -69,6 +69,9 @@ mod.hook.register("script_pre_init", "osc-cast", function()
                       script_init()
                       print("mod - osc-cast - init")
 
+                      params:add_separator("MOD - OSC-CAST")
+                      params:add_text("osc_cast_ip", "osc-cast IP", "")
+
                       for p_name, p_id in pairs(params.lookup) do
                         local p = params.params[p_id]
                         p.og_action = clone_function(p.action)
@@ -78,14 +81,11 @@ mod.hook.register("script_pre_init", "osc-cast", function()
                             print("sending osc to "..state.dest_ip..": "..path.." = "..x)
                             osc.send(state.dest_ip, path, x)
                           else
-                            print("Param 'osc-cast IP' not set or invalid, not sending")
-
+                            -- print("Param 'osc-cast IP' not set or invalid, not sending")
                           end
                           p.og_action(x)
                         end
                       end
                     end
 
-                    params:add_separator("MOD - OSC-CAST")
-                    params:add_text("osc_cast_ip", "osc-cast IP", "")
 end)
