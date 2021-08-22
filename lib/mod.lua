@@ -1,4 +1,5 @@
 local mod = require 'core/mods'
+local script = require 'core/script'
 
 
 -- -------------------------------------------------------------------------
@@ -53,40 +54,67 @@ end
 local state = {
   hostname = nil,
   dest_ip = "",
+  is_loading_script = nil,
 }
 
 
 -- -------------------------------------------------------------------------
 -- MAIN
 
+local function enrich_param_actions()
+  for p_name, p_id in pairs(params.lookup) do
+    local p = params.params[p_id]
+    if p ~= nil then -- edge case where sync issue between `params.lookup` & `params.params`
+      p.og_action = clone_function(p.action)
+      p.action = function(x)
+        local path = "/param/"..state.hostname.."/"..p.id
+        if isValidIp(state.dest_ip) then
+          print("sending osc to "..state.dest_ip..": "..path.." = "..x)
+          osc.send(state.dest_ip, path, x)
+        else
+          print("Param 'osc-cast IP' not set or invalid, not sending")
+        end
+        p.og_action(x)
+      end
+    end
+  end
+end
+
 mod.hook.register("system_post_startup", "osc-cast-sys-startup", function ()
                     state.hostname = getHostname()
+                    local script_clear = script.clear
+                    script.clear = function()
+                      script_clear()
+
+                      local is_restart_or_stop = (state.is_loading_script == nil)
+                      if is_restart_or_stop then
+                        print("mod - osc-cast - (re)start or stop")
+
+                        params:add_separator("MOD - OSC-CAST")
+                        params:add_text("osc_cast_ip", "osc-cast IP", "")
+
+                        enrich_param_actions()
+                      end
+                    end
 end)
 
 mod.hook.register("script_pre_init", "osc-cast", function()
                     local script_init = init
                     init = function ()
                       script_init()
+
                       print("mod - osc-cast - init")
 
                       params:add_separator("MOD - OSC-CAST")
                       params:add_text("osc_cast_ip", "osc-cast IP", "")
 
-                      for p_name, p_id in pairs(params.lookup) do
-                        local p = params.params[p_id]
-                        if p ~= nil then
-                          p.og_action = clone_function(p.action)
-                          p.action = function(x)
-                            local path = "/param/"..state.hostname.."/"..p.id
-                            if isValidIp(state.dest_ip) then
-                              print("sending osc to "..state.dest_ip..": "..path.." = "..x)
-                              osc.send(state.dest_ip, path, x)
-                            else
-                              -- print("Param 'osc-cast IP' not set or invalid, not sending")
-                            end
-                            p.og_action(x)
-                          end
-                        end
-                      end
+                      enrich_param_actions()
+
+                      state.is_loading_script = nil
                     end
+end)
+
+mod.hook.register("script_post_cleanup", "osc-cast-cleanup", function()
+                    print("mod - osc-cast - pre-loading cleanup")
+                    state.is_loading_script = true
 end)
