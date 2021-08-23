@@ -64,7 +64,8 @@ local state = {
 local function enrich_param_actions()
   for p_name, p_id in pairs(params.lookup) do
     local p = params.params[p_id]
-    if p ~= nil then -- edge case where sync issue between `params.lookup` & `params.params`
+    if p ~= nil and p.osc_casted == nil then -- edge case where sync issue between `params.lookup` & `params.params`
+      p.osc_casted = true
       p.og_action = clone_function(p.action)
       p.action = function(x)
         local path = "/param/"..state.hostname.."/"..p.id
@@ -72,7 +73,8 @@ local function enrich_param_actions()
           print("sending osc to "..state.dest_ip..": "..path.." = "..x)
           osc.send(state.dest_ip, path, x)
         else
-          print("Param 'osc-cast IP' not set or invalid, not sending")
+          -- print("sending osc: "..path.." = "..x)
+          -- print("Param 'osc-cast IP' not set or invalid, not sending")
         end
         p.og_action(x)
       end
