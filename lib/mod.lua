@@ -88,19 +88,21 @@ mod.hook.register("system_post_startup", "osc-cast-sys-startup", function ()
                     script.clear = function()
                       script_clear()
 
-                      local is_restart_or_stop = (state.is_loading_script == nil)
-                      if is_restart_or_stop then
-                        print("mod - osc-cast - (re)start or stop")
+                      local is_restart = (tab.count(params.lookup) == 0)
+
+                      if is_restart then
+                        print("mod - osc-cast - clear at (re)start")
 
                         params:add_separator("MOD - OSC-CAST")
                         params:add_text("osc_cast_ip", "osc-cast IP", "")
-
-                        enrich_param_actions()
                       end
+
+                      enrich_param_actions()
+
                     end
 end)
 
-mod.hook.register("script_pre_init", "osc-cast", function()
+mod.hook.register("script_pre_init", "osc-cast-pren-init", function()
                     local script_init = init
                     init = function ()
                       script_init()
@@ -117,6 +119,6 @@ mod.hook.register("script_pre_init", "osc-cast", function()
 end)
 
 mod.hook.register("script_post_cleanup", "osc-cast-cleanup", function()
-                    print("mod - osc-cast - pre-loading cleanup")
-                    state.is_loading_script = true
+                    print("mod - osc-cast - script post cleanup")
+                    -- state.is_loading_script = true
 end)
