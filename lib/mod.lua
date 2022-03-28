@@ -1,6 +1,20 @@
 local mod = require 'core/mods'
 local script = require 'core/script'
 
+-- destination IP address and port are hardcoded here for the moment
+--
+-- -------------------------------------------------------------------------
+-- STATE
+
+local state = {
+  hostname = nil,
+  dest_ip = "10.0.1.26",
+  dest_port = "10101",
+  send = true,
+  is_loading_script = nil,
+  logging = false;
+}
+
 
 -- -------------------------------------------------------------------------
 -- HELPERS - CORE
@@ -47,20 +61,6 @@ local function isValidIp(ip)
 end
 
 
-
--- -------------------------------------------------------------------------
--- STATE
-
-local state = {
-  hostname = nil,
-  dest_ip = "10.0.1.26",
-  dest_port = "10101",
-  send = true,
-  is_loading_script = nil,
-  logging = false;
-}
-
-
 -- -------------------------------------------------------------------------
 -- MAIN
 
@@ -73,7 +73,7 @@ local function enrich_param_actions()
       p.action = function(x)
         if (state.send) then
           --local path = "/param/"..state.hostname.."/"..p.id
-          local path = "/param/".. p.id
+          local path = "/param/".. p.id  -- removed hostname here to match TouchOSC template
           if isValidIp(state.dest_ip) then
             if (logging) then
               print("sending osc to "..state.dest_ip..": "..path.." = "..x)
