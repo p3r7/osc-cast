@@ -53,8 +53,11 @@ end
 
 local state = {
   hostname = nil,
-  dest_ip = "",
+  dest_ip = "10.0.1.26",
+  dest_port = "10101",
+  send = true,
   is_loading_script = nil,
+  logging = false;
 }
 
 
@@ -68,57 +71,110 @@ local function enrich_param_actions()
       p.osc_casted = true
       p.og_action = clone_function(p.action)
       p.action = function(x)
-        local path = "/param/"..state.hostname.."/"..p.id
-        if isValidIp(state.dest_ip) then
-          print("sending osc to "..state.dest_ip..": "..path.." = "..x)
-          osc.send(state.dest_ip, path, x)
-        else
-          -- print("sending osc: "..path.." = "..x)
-          -- print("Param 'osc-cast IP' not set or invalid, not sending")
+        if (state.send) then
+          --local path = "/param/"..state.hostname.."/"..p.id
+          local path = "/param/".. p.id
+          if isValidIp(state.dest_ip) then
+            if (logging) then
+              print("sending osc to "..state.dest_ip..": "..path.." = "..x)
+            end
+            osc.send({state.dest_ip, state.dest_port}, path, {x})
+          else
+            --print("sending osc: "..path.." = "..x)
+            --print("Param 'osc-cast IP' not set or invalid, not sending")
+          end
+          p.og_action(x)
         end
-        p.og_action(x)
       end
     end
   end
 end
 
 mod.hook.register("system_post_startup", "osc-cast-sys-startup", function ()
-                    state.hostname = getHostname()
-                    local script_clear = script.clear
-                    script.clear = function()
-                      script_clear()
+    state.system_post_startup = true
+    state.hostname = getHostname()
+    local script_clear = script.clear
+    script.clear = function()
+      script_clear()
 
-                      local is_restart = (tab.count(params.lookup) == 0)
+      local is_restart = (tab.count(params.lookup) == 0)
+      
+      if is_restart then
+        print("mod - osc-cast - clear at (re)start")
+      end
 
-                      if is_restart then
-                        print("mod - osc-cast - clear at (re)start")
+      enrich_param_actions()
 
-                        params:add_separator("MOD - OSC-CAST")
-                        params:add_text("osc_cast_ip", "osc-cast IP", "")
-                      end
-
-                      enrich_param_actions()
-
-                    end
+    end
 end)
 
 mod.hook.register("script_pre_init", "osc-cast-pren-init", function()
-                    local script_init = init
-                    init = function ()
-                      script_init()
+    local script_init = init
+    init = function ()
+      script_init()
 
-                      print("mod - osc-cast - init")
+      print("mod - osc-cast - init")
 
-                      params:add_separator("MOD - OSC-CAST")
-                      params:add_text("osc_cast_ip", "osc-cast IP", "")
+      enrich_param_actions()
 
-                      enrich_param_actions()
-
-                      state.is_loading_script = nil
-                    end
+      state.is_loading_script = nil
+    end
 end)
 
 mod.hook.register("script_post_cleanup", "osc-cast-cleanup", function()
-                    print("mod - osc-cast - script post cleanup")
-                    -- state.is_loading_script = true
+    print("mod - osc-cast - script post cleanup")
+    -- state.is_loading_script = true
 end)
+
+
+local m = {}
+
+m.key = function(n, z)
+  if n == 2 and z == 1 then
+    -- return to the mod selection menu
+    mod.menu.exit()
+  end
+end
+
+m.enc = function(n, d)
+  if n == 2 then 
+  
+  elseif n == 3 then 
+      if (state.send) then 
+        state.send = false
+      else
+        state.send = true
+      end
+  end
+  -- tell the menu system to redraw, which in turn calls the mod's menu redraw
+  -- function
+  mod.menu.redraw()
+end
+
+m.redraw = function()
+  screen.clear()
+  screen.move(10,8)
+  screen.text("OSC-CAST")
+  screen.move(10,16)
+  screen.text("Destination: " .. state.dest_ip .. "/" .. state.dest_port)
+  screen.move(10,40)
+  if (state.send) then 
+    issending = "on"
+  else
+    issending = "off"
+  end
+  
+  screen.text("Sending: " .. issending)
+  screen.update()
+end
+
+m.init = function() end -- on menu entry, ie, if you wanted to start timers
+m.deinit = function() end -- on menu exit
+
+-- register the mod menu
+--
+-- NOTE: `mod.this_name` is a convienence variable which will be set to the name
+-- of the mod which is being loaded. in order for the menu to work it must be
+-- registered with a name which matches the name of the mod in the dust folder.
+--
+mod.menu.register(mod.this_name, m)
